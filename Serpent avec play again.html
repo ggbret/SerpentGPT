@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jeu du serpent</title>
+    <style>
+        #game-board {
+            width: 500px;
+            height: 250px;
+            border: 1px solid #000;
+            position: relative;
+            background-color: #d6d6d6;
+        }
+
+        .snake-dot {
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            background-color: green;
+            border-radius: 50%;
+        }
+
+        .apple {
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            background-image: url('apple.png');
+            background-size: cover;
+        }
+
+        #play-again {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-board"></div>
+    <audio id="eat-sound" src="eat-sound.mp3" preload="auto"></audio>
+    <audio id="background-music" src="background-music.mp3" preload="auto" loop></audio>
+    <button id="play-again">Play Again</button>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const gameBoard = document.getElementById("game-board");
+            const playAgainButton = document.getElementById("play-again");
+            const gridSize = 20; // Taille d'une cellule du jeu
+            const boardWidth = 500; // Largeur du plateau de jeu (en pixels)
+            const boardHeight = 250; // Hauteur du plateau de jeu (en pixels)
+            const initialSnakeSpeed = 100; // Vitesse initiale du serpent en millisecondes
+            let snakeSpeed = initialSnakeSpeed; // Vitesse actuelle du serpent
+            const accelerationRate = 0.1; // Taux d'accélération du serpent
+
+            let snake = [{ x: 5, y: 5 }]; // Position initiale du serpent
+            let apple = { x: 2, y: 2 }; // Position initiale de la pomme
+            let dx = 1; // Direction du mouvement en x (droite par défaut)
+            let dy = 0; // Direction du mouvement en y
+
+            let gameInterval; // ID de l'intervalle de jeu
+
+            // Fonction pour dessiner le serpent et la pomme sur le plateau de jeu
+            function draw() {
+                // Efface le plateau de jeu
+                gameBoard.innerHTML = "";
+
+                // Dessine le serpent
+                snake.forEach(dot => {
+                    const snakeDot = document.createElement("div");
+                    snakeDot.className = "snake-dot";
+                    snakeDot.style.left = dot.x * gridSize + "px";
+                    snakeDot.style.top = dot.y * gridSize + "px";
+                    gameBoard.appendChild(snakeDot);
+                });
+
+                // Dessine la pomme
+                const appleElement = document.createElement("div");
+                appleElement.className = "apple";
+                appleElement.style.left = apple.x * gridSize + "px";
+                appleElement.style.top = apple.y * gridSize + "px";
+                gameBoard.appendChild(appleElement);
+            }
+
+            // Fonction pour mettre à jour la position du serpent
+            function update() {
+                // Met à jour la position de la tête du serpent
+                const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+                snake.unshift(head); // Ajoute la nouvelle tête au début du tableau
+
+                // Vérifie si le serpent a mangé la pomme
+                if (head.x === apple.x && head.y === apple.y) {
+                    // Génère une nouvelle position pour la pomme
+                    apple = {
+                        x: Math.floor(Math.random() * (boardWidth / gridSize)),
+                        y: Math.floor(Math.random() * (boardHeight / gridSize))
+                    };
+                    snakeSpeed *= (1 - accelerationRate); // Accélère le serpent
+                    playEatSound(); // Joue le son de dégustation
+                } else {
+                    // Supprime la dernière partie de la queue du serpent
+                    snake.pop();
+                }
+            }
+
+            // Fonction pour vérifier les collisions
+            function checkCollision() {
+                const head = snake[0];
+
+                // Vérifie si le serpent a touché le bord du plateau de jeu
+                if (head.x < 0 || head.x >= boardWidth / gridSize || head.y < 0 || head.y >= boardHeight / gridSize) {
+                    gameOver();
+                }
+
+                // Vérifie si le serpent a touché son propre corps
+                for (let i = 1; i < snake.length; i++) {
+                    if (head.x === snake[i].x && head.y === snake[i].y) {
+                        gameOver();
+                    }
+                }
+            }
+
+            // Fonction de gestion des touches du clavier
+            function handleKeyPress(event) {
+                const keyPressed = event.keyCode;
+
+                // Définit la direction du mouvement en fonction de la touche pressée
+                if (keyPressed === 37 && dx !== 1) {
+                    dx = -1; // Gauche
+                    dy = 0;
+                } else if (keyPressed === 38 && dy !== 1) {
+                    dx = 0;
+                    dy = -1; // Haut
+                } else if (keyPressed === 39 && dx !== -1) {
+                    dx = 1; // Droite
+                    dy = 0;
+                } else if (keyPressed === 40 && dy !== -1) {
+                    dx = 0;
+                    dy = 1; // Bas
+                }
+            }
+
+            // Fonction de fin de jeu
+            function gameOver() {
+                clearInterval(gameInterval); // Arrête la mise à jour du jeu
+                playAgainButton.style.display = "block"; // Affiche le bouton "Play Again"
+            }
+
+            // Fonction pour rejouer le jeu
+            function playAgain() {
+                snake = [{ x: 5, y: 5 }]; // Réinitialise la position du serpent
+                apple = { x: 2, y: 2 }; // Réinitialise la position de la pomme
+                dx = 1; // Réinitialise la direction du mouvement en x
+                dy = 0; // Réinitialise la direction du mouvement en y
+                snakeSpeed = initialSnakeSpeed; // Réinitialise la vitesse du serpent
+                playAgainButton.style.display = "none"; // Masque le bouton "Play Again"
+                gameInterval = setInterval(() => {
+                    update();
+                    checkCollision();
+                    draw();
+                }, snakeSpeed);
+            }
+
+            // Fonction pour jouer le son de dégustation
+            function playEatSound() {
+                const eatSound = document.getElementById("eat-sound");
+                eatSound.volume = 1.0; // Volume du son (entre 0 et 1)
+                eatSound.play();
+            }
+
+            // Écouteur d'événement pour la gestion des touches du clavier
+            document.addEventListener("keydown", handleKeyPress);
+
+            // Écouteur d'événement pour le bouton "Play Again"
+            playAgainButton.addEventListener("click", playAgain);
+
+            // Démarre le jeu
+            gameInterval = setInterval(() => {
+                update();
+                checkCollision();
+                draw();
+            }, snakeSpeed);
+
+            // Joue la musique de fond
+            const backgroundMusic = document.getElementById("background-music");
+            backgroundMusic.volume = 0.5; // Volume de la musique de fond (entre 0 et 1)
+            backgroundMusic.play();
+        });
+    </script>
+</body>
+</html>
